@@ -5,64 +5,92 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow, noarchive">
   <meta name="googlebot" content="noindex, nofollow">
-  <title>FreshPoint × Instacart · delivery cost estimator</title>
+  <title>FreshPoint × Instacart · Delivery Cost Estimator</title>
   <link rel="icon" type="image/png" href="assets/freshpoint-icon.png">
   <link rel="apple-touch-icon" href="assets/freshpoint-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Jost:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
   <style>
     :root {
-      --fp: #164a38;
-      --fp-deep: #0c2c21;
-      --ic: #0aad0a;
-      --paper: #f4efe6;
-      --ink: #132119;
-      --muted: #5a6a62;
-      --card: #fffdf8;
-      --line: #d8cebe;
+      --fp-green: #64a047;
+      --fp-orange: #f4722b;
+      --kale: #003d29;
+      --lime: #0aad0a;
+      --carrot: #ff7009;
+      --cashew: #faf1e5;
+      --ink: #343538;
+      --muted: #5c6560;
+      --card: #ffffff;
+      --line: #e4dccf;
+      --fp: var(--kale);
+      --ic: var(--lime);
     }
     * { box-sizing: border-box; }
     html, body { margin: 0; min-height: 100%; }
     body {
-      font-family: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
-      background: var(--paper);
+      font-family: "DM Sans", "Segoe UI", system-ui, sans-serif;
+      background: var(--cashew);
       color: var(--ink);
       line-height: 1.45;
     }
     header {
       background: #fff;
       color: var(--ink);
-      padding: 1.15rem 1.25rem 1.35rem;
-      border-bottom: 1px solid var(--line);
+      padding: 1.15rem 1.25rem 1.25rem;
+      position: relative;
+    }
+    header::after {
+      content: "";
+      display: block;
+      height: 3px;
+      background: linear-gradient(90deg, var(--fp-green), var(--fp-orange));
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
     }
     .wrap { max-width: 980px; margin: 0 auto; }
     .brand {
       display: flex;
       align-items: center;
-      gap: 1rem;
+      gap: .85rem;
       flex-wrap: wrap;
     }
     .fp-logo {
       display: block;
-      height: 48px;
+      height: 42px;
       width: auto;
     }
-    .partner {
+    .ic-logo {
+      display: block;
+      height: 22px;
+      width: auto;
+    }
+    .brand-x {
+      color: #c5bdae;
+      font-size: 1.05rem;
+      font-weight: 500;
+      line-height: 1;
+    }
+    .eyebrow {
+      margin: .85rem 0 0;
       font-size: .72rem;
-      letter-spacing: .12em;
+      font-weight: 600;
+      letter-spacing: .14em;
       text-transform: uppercase;
-      color: var(--muted);
-      border-left: 1px solid var(--line);
-      padding-left: 1rem;
-      line-height: 1.2;
+      color: var(--fp-orange);
     }
     h1 {
-      margin: .7rem 0 0;
-      font-size: clamp(1.45rem, 3.4vw, 2.05rem);
-      font-weight: 650;
-      letter-spacing: -.02em;
-      color: var(--fp-deep);
+      margin: .2rem 0 0;
+      font-family: Jost, "DM Sans", sans-serif;
+      font-size: clamp(1.7rem, 3.6vw, 2.35rem);
+      font-weight: 600;
+      letter-spacing: -.03em;
+      color: var(--kale);
     }
-    .lede { margin: .45rem 0 0; max-width: 42rem; color: var(--muted); font-size: .95rem; }
+    .lede { margin: .4rem 0 0; max-width: 42rem; color: var(--muted); font-size: .95rem; }
     main { padding: 1.15rem 1.25rem 2.5rem; }
     .grid {
       display: grid;
@@ -78,7 +106,7 @@
       border-radius: 14px;
       padding: 1.05rem 1.1rem 1.15rem;
     }
-    label { display: block; font-size: .78rem; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin-bottom: .35rem; }
+    label { display: block; font-size: .8rem; font-weight: 600; color: var(--muted); margin-bottom: .35rem; }
     select, input[type="text"], input[type="number"], input[type="password"] {
       width: 100%;
       border: 1px solid #cfc6b6;
@@ -102,10 +130,15 @@
     }
     .suggest button:hover, .suggest button:focus { background: #f3f8f2; }
     #map { height: 280px; border-radius: 10px; border: 1px solid var(--line); margin-top: .2rem; }
+    #quoteCard {
+      box-shadow: 0 10px 28px rgba(0, 61, 41, .06);
+      border-top: 3px solid var(--fp-green);
+    }
     .quote-amt {
+      font-family: Jost, "DM Sans", sans-serif;
       font-size: clamp(2.4rem, 6vw, 3.4rem);
       font-weight: 700; letter-spacing: -.04em; line-height: 1;
-      color: var(--fp-deep);
+      color: var(--kale);
     }
     .quote-amt small { font-size: .38em; font-weight: 600; letter-spacing: 0; color: var(--muted); }
     .rows { margin-top: 1rem; border-top: 1px solid var(--line); }
@@ -115,16 +148,16 @@
       display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .04em;
       text-transform: uppercase; padding: .18rem .45rem; border-radius: 999px;
     }
-    .live { background: #d8f5d8; color: #0a5c16; }
-    .launching { background: #ffe7b8; color: #7a4a00; }
-    .expansion { background: #e6e3db; color: #3d4a44; }
+    .live { background: #e3f8e3; color: #067206; }
+    .launching { background: #fde4d4; color: #c24d12; }
+    .expansion { background: #ece9e2; color: #4a524e; }
     .status { font-size: .85rem; color: var(--muted); min-height: 1.2em; }
     button.ghost {
       margin-top: .45rem; background: transparent; border: 1px dashed #cfc6b6;
       border-radius: 8px; padding: .4rem .6rem; font: inherit; font-size: .82rem; color: var(--muted); cursor: pointer;
     }
     button.primary {
-      margin-top: .55rem; background: var(--fp); color: #f6f3ec; border: 0;
+      margin-top: .55rem; background: var(--kale); color: #faf1e5; border: 0;
       border-radius: 10px; padding: .7rem 1rem; font: inherit; font-weight: 650; cursor: pointer;
       width: 100%;
     }
@@ -140,10 +173,12 @@
   <header>
     <div class="wrap">
       <div class="brand">
-        <img class="fp-logo" src="assets/freshpoint-logo.png?v=20260831e" width="738" height="210" alt="FreshPoint">
-        <span class="partner">Instacart Will Call</span>
+        <img class="fp-logo" src="assets/freshpoint-logo.png?v=20260831f" width="738" height="210" alt="FreshPoint">
+        <span class="brand-x" aria-hidden="true">×</span>
+        <img class="ic-logo" src="assets/instacart-logo.svg?v=20260831f" width="150" height="24" alt="Instacart">
       </div>
-      <h1>Delivery cost estimator</h1>
+      <p class="eyebrow">Will Call</p>
+      <h1>Delivery Cost Estimator</h1>
       <p class="lede" id="lede">Enter the password from your Instacart contact to continue.</p>
     </div>
   </header>
@@ -155,7 +190,7 @@
           <label for="pw">Password</label>
           <input id="pw" type="password" autocomplete="current-password" required>
         </div>
-        <button class="primary" id="unlockBtn" type="submit">Open calculator</button>
+        <button class="primary" id="unlockBtn" type="submit">Open estimator</button>
         <p class="err" id="gateErr" aria-live="polite"></p>
       </form>
     </section>
@@ -184,7 +219,7 @@
           <div id="map" aria-label="Map of warehouse and delivery address"></div>
         </section>
         <section class="card" id="quoteCard">
-          <div class="hint" style="margin-top:0">Estimated cost</div>
+          <div class="hint" style="margin-top:0">Estimated Cost</div>
           <div class="quote-amt" id="total">— <small>USD</small></div>
           <div class="rows" id="breakdown"></div>
         </section>
@@ -192,7 +227,7 @@
     </main>
   </div>
 
-  <script src="payload.js?v=20260831e"></script>
+  <script src="payload.js?v=20260831f"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script>
     const SESSION_KEY = "fpQuoteConfigV1";
@@ -269,7 +304,7 @@
         <div class="row"><span>${milesLabel}</span><span>${lastMiles.toFixed(1)} mi</span></div>
         <div class="row"><span>Base</span><span>${money(q.base)}</span></div>
         <div class="row"><span>Additional mileage</span><span>${money(q.extra)}</span></div>
-        <div class="row"><span>Estimated cost</span><span>${money(q.total)}</span></div>
+        <div class="row"><span>Estimated Cost</span><span>${money(q.total)}</span></div>
       `;
     }
     function updateWhMeta() {
