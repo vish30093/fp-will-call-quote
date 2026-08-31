@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <meta name="googlebot" content="noindex, nofollow">
+  <title>FreshPoint × Instacart · delivery cost estimator</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <style>
+    :root {
+      --fp: #164a38;
+      --fp-deep: #0c2c21;
+      --ic: #0aad0a;
+      --paper: #f4efe6;
+      --ink: #132119;
+      --muted: #5a6a62;
+      --card: #fffdf8;
+      --line: #d8cebe;
+      --warn: #7a3e06;
+      --warn-bg: #fff3dc;
+      --ok: #0d5c2e;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--paper);
+      color: var(--ink);
+      line-height: 1.45;
+    }
+    header {
+      background: linear-gradient(160deg, var(--fp-deep) 0%, var(--fp) 70%);
+      color: #f6f3ec;
+      padding: 1.35rem 1.25rem 1.5rem;
+    }
+    .wrap { max-width: 980px; margin: 0 auto; }
+    .lockup {
+      display: flex; align-items: baseline; gap: .55rem; flex-wrap: wrap;
+      font-size: .78rem; letter-spacing: .12em; text-transform: uppercase;
+      opacity: .85;
+    }
+    .lockup b { color: var(--ic); font-weight: 700; }
+    h1 {
+      margin: .45rem 0 0;
+      font-size: clamp(1.45rem, 3.4vw, 2.05rem);
+      font-weight: 650;
+      letter-spacing: -.02em;
+    }
+    .lede { margin: .45rem 0 0; max-width: 42rem; color: #d7e4dc; font-size: .95rem; }
+    main { padding: 1.15rem 1.25rem 2.5rem; }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+    @media (min-width: 860px) {
+      .grid { grid-template-columns: 1.05fr .95fr; align-items: start; }
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 1.05rem 1.1rem 1.15rem;
+      box-shadow: 0 1px 0 rgba(20,34,25,.04);
+    }
+    label { display: block; font-size: .78rem; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin-bottom: .35rem; }
+    select, input[type="text"], input[type="number"] {
+      width: 100%;
+      border: 1px solid #cfc6b6;
+      border-radius: 10px;
+      padding: .7rem .8rem;
+      font: inherit;
+      background: #fff;
+      color: var(--ink);
+    }
+    select:focus, input:focus { outline: 2px solid var(--ic); outline-offset: 1px; }
+    .hint { font-size: .82rem; color: var(--muted); margin: .35rem 0 0; }
+    .field { margin-bottom: .95rem; position: relative; }
+    .suggest {
+      position: absolute; z-index: 20; left: 0; right: 0; top: calc(100% - 2px);
+      background: #fff; border: 1px solid var(--line); border-radius: 0 0 10px 10px;
+      max-height: 220px; overflow: auto; display: none;
+    }
+    .suggest button {
+      display: block; width: 100%; text-align: left; border: 0; background: transparent;
+      padding: .65rem .8rem; font: inherit; cursor: pointer; border-top: 1px solid #eee8dc;
+    }
+    .suggest button:hover, .suggest button:focus { background: #f3f8f2; }
+    #map { height: 280px; border-radius: 10px; border: 1px solid var(--line); margin-top: .2rem; }
+    .quote-amt {
+      font-size: clamp(2.4rem, 6vw, 3.4rem);
+      font-weight: 700; letter-spacing: -.04em; line-height: 1;
+      color: var(--fp-deep);
+    }
+    .quote-amt small { font-size: .38em; font-weight: 600; letter-spacing: 0; color: var(--muted); }
+    .rows { margin-top: 1rem; border-top: 1px solid var(--line); }
+    .row { display: flex; justify-content: space-between; gap: 1rem; padding: .55rem 0; border-bottom: 1px solid #eee8dc; font-size: .95rem; }
+    .row span:last-child { font-variant-numeric: tabular-nums; font-weight: 600; }
+    .pill {
+      display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .04em;
+      text-transform: uppercase; padding: .18rem .45rem; border-radius: 999px;
+    }
+    .live { background: #d8f5d8; color: #0a5c16; }
+    .launching { background: #ffe7b8; color: #7a4a00; }
+    .expansion { background: #e6e3db; color: #3d4a44; }
+    .banner {
+      margin-top: .9rem; padding: .7rem .8rem; border-radius: 10px; font-size: .88rem;
+    }
+    .banner.warn { background: var(--warn-bg); color: var(--warn); }
+    .banner.ok { background: #e7f6ea; color: var(--ok); }
+    .banner.muted { background: #f0ebe1; color: var(--muted); }
+    footer { max-width: 980px; margin: 0 auto; padding: 0 1.25rem 2.5rem; color: var(--muted); font-size: .82rem; }
+    footer p { margin: 0 0 .6rem; }
+    .status { font-size: .85rem; color: var(--muted); min-height: 1.2em; }
+    button.ghost {
+      margin-top: .45rem; background: transparent; border: 1px dashed #cfc6b6;
+      border-radius: 8px; padding: .4rem .6rem; font: inherit; font-size: .82rem; color: var(--muted); cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div class="lockup">FreshPoint <b>×</b> Instacart Will Call</div>
+      <h1>Delivery cost estimator</h1>
+      <p class="lede">Pick the FreshPoint warehouse and a customer address. This shows what Instacart would invoice FreshPoint for last-mile delivery — not a checkout fee, and not a contract.</p>
+    </div>
+  </header>
+  <main class="wrap">
+    <div class="grid">
+      <section class="card">
+        <div class="field">
+          <label for="wh">Warehouse</label>
+          <select id="wh"></select>
+          <p class="hint" id="whMeta"></p>
+        </div>
+        <div class="field">
+          <label for="addr">Customer delivery address</label>
+          <input id="addr" type="text" autocomplete="off" placeholder="Street, city, state">
+          <div class="suggest" id="suggest" role="listbox"></div>
+          <p class="hint">Uses OpenStreetMap to find the address, then driving miles warehouse → customer.</p>
+        </div>
+        <div class="field" id="milesManualWrap" hidden>
+          <label for="milesManual">Driving miles (manual)</label>
+          <input id="milesManual" type="number" min="0" step="0.1" inputmode="decimal">
+        </div>
+        <button class="ghost" id="toggleManual" type="button">Enter miles yourself</button>
+        <p class="status" id="status" aria-live="polite"></p>
+        <div id="map" aria-label="Map of warehouse and delivery address"></div>
+      </section>
+      <section class="card" id="quoteCard">
+        <div class="hint" style="margin-top:0">Estimated invoice to FreshPoint</div>
+        <div class="quote-amt" id="total">— <small>USD</small></div>
+        <div class="rows" id="breakdown"></div>
+        <div id="flags"></div>
+      </section>
+    </div>
+  </main>
+  <footer>
+    <p><strong>Estimate only.</strong> Instacart bills FreshPoint on a monthly invoice using one-way driving miles. The customer is not charged this amount at checkout. Actual billed miles may differ slightly from this map.</p>
+    <p>Formula in production invoicing: base fee + max(miles − 5, 0) × per-mile rate. First 5 miles are inside the base. California warehouses use the higher-cost tier ($38 + $0.90/mi). All other U.S. warehouses on this list use $34 + $0.56/mi. SaaS / platform fees are not included.</p>
+    <p>Coverage (is this customer inside the 70-minute peak window?) is a separate map. If drive time here is over 70 minutes, treat that as a warning — not a live availability check.</p>
+    <p>Unlisted internal tool. Not official Instacart commercial terms. Do not publish, SEO, or treat as a rate sheet.</p>
+  </footer>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script>
+    const TIER1_STATES = new Set(["CA", "NY", "WA", "MA"]);
+    const WAREHOUSES = [
+      { id: "pompano", name: "South Florida — Pompano Beach", address: "2300 NW 19th Street, Pompano Beach, FL 33069", status: "live", lat: 26.25444, lng: -80.13359, state: "FL" },
+      { id: "dallas", name: "Dallas", address: "4721 Simonton Road, Dallas, TX 75244", status: "launching", lat: 32.93083, lng: -96.82853, state: "TX" },
+      { id: "orlando", name: "Central Florida — Orlando", address: "8801 Exchange Drive, Orlando, FL 32809", status: "expansion", lat: 28.43803, lng: -81.40983, state: "FL" },
+      { id: "tampa", name: "West Coast Florida — Tampa", address: "5445 Bonacker Drive, Tampa, FL 33610", status: "expansion", lat: 28.00032, lng: -82.39089, state: "FL" },
+      { id: "sanantonio", name: "South Texas — San Antonio", address: "4651 Greatland Drive, San Antonio, TX 78218", status: "expansion", lat: 29.47272, lng: -98.40149, state: "TX" },
+      { id: "turlock", name: "Central California — Turlock", address: "5900 N. Golden State Blvd, Turlock, CA 95382", status: "expansion", lat: 37.51993, lng: -120.87550, state: "CA" },
+      { id: "unioncity", name: "San Francisco — Union City", address: "30340 Whipple Road, Union City, CA 94587", status: "expansion", lat: 37.59770, lng: -122.08679, state: "CA" },
+      { id: "industry", name: "Southern California — City of Industry", address: "155 N. Orange Avenue, City of Industry, CA 91744", status: "expansion", lat: 34.04034, lng: -117.97685, state: "CA" },
+      { id: "denver", name: "Denver", address: "5151 N. Bannock Street, Denver, CO 80216", status: "expansion", lat: 39.78845, lng: -104.99179, state: "CO" },
+      { id: "hartford", name: "Connecticut — Hartford", address: "105 Reserve Road, Hartford, CT 06114", status: "expansion", lat: 41.75141, lng: -72.65736, state: "CT" },
+      { id: "atlanta", name: "Atlanta — Fairburn", address: "1200 Oakley Industrial Blvd, Fairburn, GA 30213", status: "expansion", lat: 33.54145, lng: -84.58428, state: "GA" },
+      { id: "chicago", name: "Chicago", address: "3348 S Pulaski Rd, Chicago, IL 60623", status: "expansion", lat: 41.83185, lng: -87.72527, state: "IL" },
+      { id: "laurel", name: "Mid-Atlantic — Laurel", address: "9001 Whiskey Bottom Road, Laurel, MD 20723", status: "expansion", lat: 39.11084, lng: -76.82994, state: "MD" },
+      { id: "charlotte", name: "Charlotte", address: "2121-A Distribution Center Drive, Charlotte, NC 28269", status: "expansion", lat: 35.27415, lng: -80.83951, state: "NC" },
+      { id: "raleigh", name: "Raleigh — Morrisville", address: "203 Trans Air Drive, Morrisville, NC 27560", status: "expansion", lat: 35.85055, lng: -78.81986, state: "NC" },
+      { id: "nashville", name: "Nashville", address: "740 Massman Drive, Nashville, TN 37210", status: "expansion", lat: 36.14580, lng: -86.71202, state: "TN" }
+    ];
+    const STATUS_LABEL = { live: "Live", launching: "Launching", expansion: "Expansion" };
+
+    const $ = (id) => document.getElementById(id);
+    const whEl = $("wh");
+    const addrEl = $("addr");
+    const suggestEl = $("suggest");
+    const statusEl = $("status");
+    const flagsEl = $("flags");
+    const breakdownEl = $("breakdown");
+    const totalEl = $("total");
+    const whMeta = $("whMeta");
+    const milesManual = $("milesManual");
+
+    WAREHOUSES.forEach((w) => {
+      const opt = document.createElement("option");
+      opt.value = w.id;
+      opt.textContent = `${w.name} (${STATUS_LABEL[w.status]})`;
+      whEl.appendChild(opt);
+    });
+
+    let dest = null;
+    let lastMiles = null;
+    let lastMinutes = null;
+    let lastSource = "";
+    let map, whMarker, destMarker, line;
+    let debounce;
+
+    function warehouse() {
+      return WAREHOUSES.find((w) => w.id === whEl.value);
+    }
+    function tierFor(w) {
+      return TIER1_STATES.has(w.state) ? 1 : 2;
+    }
+    function rates(tier) {
+      return tier === 1
+        ? { base: 38, per: 0.9, label: "Tier 1 (CA / NY / WA / MA card)" }
+        : { base: 34, per: 0.56, label: "Tier 2 (all other U.S.)" };
+    }
+    function money(n) {
+      return n.toLocaleString("en-US", { style: "currency", currency: "USD" });
+    }
+    function haversineMiles(a, b) {
+      const R = 3958.8;
+      const dLat = (b.lat - a.lat) * Math.PI / 180;
+      const dLng = (b.lng - a.lng) * Math.PI / 180;
+      const s =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(a.lat * Math.PI / 180) * Math.cos(b.lat * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+      return 2 * R * Math.asin(Math.sqrt(s));
+    }
+    function quote(miles, w) {
+      const r = rates(tierFor(w));
+      const extraMiles = Math.max(0, miles - 5);
+      const extra = extraMiles * r.per;
+      return { ...r, miles, extraMiles, extra, total: r.base + extra };
+    }
+    function renderQuote() {
+      const w = warehouse();
+      flagsEl.innerHTML = "";
+      if (lastMiles == null || Number.isNaN(lastMiles)) {
+        totalEl.innerHTML = "— <small>USD</small>";
+        breakdownEl.innerHTML = "";
+        return;
+      }
+      const q = quote(lastMiles, w);
+      totalEl.innerHTML = `${money(q.total)} <small>USD</small>`;
+      breakdownEl.innerHTML = `
+        <div class="row"><span>Warehouse</span><span>${w.name}</span></div>
+        <div class="row"><span>Rate card</span><span>${q.label}</span></div>
+        <div class="row"><span>Driving miles (one-way)</span><span>${lastMiles.toFixed(1)} mi${lastSource ? " · " + lastSource : ""}</span></div>
+        <div class="row"><span>Drive time</span><span>${lastMinutes == null ? "—" : Math.round(lastMinutes) + " min"}</span></div>
+        <div class="row"><span>Base fee (includes first 5 mi)</span><span>${money(q.base)}</span></div>
+        <div class="row"><span>Mileage · ${q.extraMiles.toFixed(1)} mi × ${money(q.per)}</span><span>${money(q.extra)}</span></div>
+        <div class="row"><span>Estimated invoice</span><span>${money(q.total)}</span></div>
+      `;
+      if (w.status !== "live") {
+        flagsEl.innerHTML += `<div class="banner muted">${STATUS_LABEL[w.status]} site — rate card still applies; confirm the DC is live for ordering before quoting a customer.</div>`;
+      }
+      if (lastMinutes != null && lastMinutes > 70) {
+        flagsEl.innerHTML += `<div class="banner warn">Drive time is over 70 minutes. This customer is likely outside the peak coverage window. Confirm on the FreshPoint isochrone map before promising same-window delivery.</div>`;
+      } else if (lastMinutes != null) {
+        flagsEl.innerHTML += `<div class="banner ok">Drive time is inside 70 minutes on this routing. Coverage maps (Carto) remain the source of truth for serviceable area.</div>`;
+      }
+    }
+    function updateWhMeta() {
+      const w = warehouse();
+      const t = tierFor(w);
+      const r = rates(t);
+      whMeta.innerHTML = `${w.address} · <span class="pill ${w.status}">${STATUS_LABEL[w.status]}</span> · ${r.label}: ${money(r.base)} + ${money(r.per)}/mi after 5`;
+      if (map && whMarker) {
+        whMarker.setLatLng([w.lat, w.lng]);
+        map.setView([w.lat, w.lng], dest ? map.getZoom() : 10);
+      }
+      if (dest) route();
+      else renderQuote();
+    }
+    function initMap() {
+      const w = warehouse();
+      map = L.map("map", { scrollWheelZoom: false }).setView([w.lat, w.lng], 10);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "&copy; OpenStreetMap"
+      }).addTo(map);
+      whMarker = L.marker([w.lat, w.lng]).addTo(map).bindPopup("Warehouse");
+    }
+    function drawDest(lat, lng) {
+      if (destMarker) destMarker.setLatLng([lat, lng]);
+      else destMarker = L.marker([lat, lng]).addTo(map).bindPopup("Customer");
+      const w = warehouse();
+      if (line) map.removeLayer(line);
+      line = L.polyline([[w.lat, w.lng], [lat, lng]], { color: "#0aad0a", weight: 3 }).addTo(map);
+      map.fitBounds(line.getBounds().pad(0.2));
+    }
+    async function route() {
+      const w = warehouse();
+      if (!dest) return;
+      statusEl.textContent = "Routing…";
+      try {
+        const url = `https://router.project-osrm.org/route/v1/driving/${w.lng},${w.lat};${dest.lng},${dest.lat}?overview=false`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("osrm");
+        const data = await res.json();
+        const route0 = data.routes && data.routes[0];
+        if (!route0) throw new Error("no-route");
+        lastMiles = route0.distance / 1609.344;
+        lastMinutes = route0.duration / 60;
+        lastSource = "driving";
+        statusEl.textContent = "";
+      } catch (err) {
+        lastMiles = haversineMiles(w, dest) * 1.3;
+        lastMinutes = null;
+        lastSource = "straight-line × 1.3 (routing unavailable)";
+        statusEl.textContent = "Driving router unavailable — using an estimated miles fallback.";
+      }
+      drawDest(dest.lat, dest.lng);
+      renderQuote();
+    }
+    async function searchAddr(q) {
+      if (q.trim().length < 5) { suggestEl.style.display = "none"; return; }
+      const params = new URLSearchParams({
+        q, format: "json", addressdetails: "0", limit: "5", countrycodes: "us"
+      });
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
+        headers: { Accept: "application/json" }
+      });
+      const rows = await res.json();
+      suggestEl.innerHTML = "";
+      if (!rows.length) { suggestEl.style.display = "none"; return; }
+      rows.forEach((row) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = row.display_name;
+        btn.addEventListener("click", () => {
+          addrEl.value = row.display_name;
+          dest = { lat: parseFloat(row.lat), lng: parseFloat(row.lon) };
+          suggestEl.style.display = "none";
+          $("milesManualWrap").hidden = true;
+          route();
+        });
+        suggestEl.appendChild(btn);
+      });
+      suggestEl.style.display = "block";
+    }
+
+    whEl.addEventListener("change", updateWhMeta);
+    addrEl.addEventListener("input", () => {
+      clearTimeout(debounce);
+      debounce = setTimeout(() => searchAddr(addrEl.value).catch(() => {
+        statusEl.textContent = "Address lookup failed. Enter miles yourself.";
+      }), 450);
+    });
+    document.addEventListener("click", (e) => {
+      if (!suggestEl.contains(e.target) && e.target !== addrEl) suggestEl.style.display = "none";
+    });
+    $("toggleManual").addEventListener("click", () => {
+      $("milesManualWrap").hidden = false;
+      milesManual.focus();
+    });
+    milesManual.addEventListener("input", () => {
+      const n = parseFloat(milesManual.value);
+      if (Number.isNaN(n) || n < 0) return;
+      lastMiles = n;
+      lastMinutes = null;
+      lastSource = "manual";
+      dest = null;
+      renderQuote();
+    });
+
+    initMap();
+    updateWhMeta();
+  </script>
+</body>
+</html>
