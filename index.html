@@ -17,9 +17,6 @@
       --muted: #5a6a62;
       --card: #fffdf8;
       --line: #d8cebe;
-      --warn: #7a3e06;
-      --warn-bg: #fff3dc;
-      --ok: #0d5c2e;
     }
     * { box-sizing: border-box; }
     html, body { margin: 0; min-height: 100%; }
@@ -103,14 +100,6 @@
     .live { background: #d8f5d8; color: #0a5c16; }
     .launching { background: #ffe7b8; color: #7a4a00; }
     .expansion { background: #e6e3db; color: #3d4a44; }
-    .banner {
-      margin-top: .9rem; padding: .7rem .8rem; border-radius: 10px; font-size: .88rem;
-    }
-    .banner.warn { background: var(--warn-bg); color: var(--warn); }
-    .banner.ok { background: #e7f6ea; color: var(--ok); }
-    .banner.muted { background: #f0ebe1; color: var(--muted); }
-    footer { max-width: 980px; margin: 0 auto; padding: 0 1.25rem 2.5rem; color: var(--muted); font-size: .82rem; }
-    footer p { margin: 0 0 .6rem; }
     .status { font-size: .85rem; color: var(--muted); min-height: 1.2em; }
     button.ghost {
       margin-top: .45rem; background: transparent; border: 1px dashed #cfc6b6;
@@ -134,7 +123,7 @@
     <div class="wrap">
       <div class="lockup">FreshPoint <b>×</b> Instacart Will Call</div>
       <h1>Delivery cost estimator</h1>
-      <p class="lede" id="lede">Instacart partner tool. Enter the password from your Instacart contact to open the quote calculator.</p>
+      <p class="lede" id="lede">Enter the password from your Instacart contact to continue.</p>
     </div>
   </header>
 
@@ -147,7 +136,6 @@
         </div>
         <button class="primary" id="unlockBtn" type="submit">Open calculator</button>
         <p class="err" id="gateErr" aria-live="polite"></p>
-        <p class="hint">This is a shared partner password, not an Instacart login. Do not post it publicly.</p>
       </form>
     </section>
   </main>
@@ -165,10 +153,9 @@
             <label for="addr">Customer delivery address</label>
             <input id="addr" type="text" autocomplete="off" placeholder="Street, city, state">
             <div class="suggest" id="suggest" role="listbox"></div>
-            <p class="hint">Uses OpenStreetMap to find the address, then driving miles warehouse → customer.</p>
           </div>
           <div class="field" id="milesManualWrap" hidden>
-            <label for="milesManual">Driving miles (manual)</label>
+            <label for="milesManual">Miles</label>
             <input id="milesManual" type="number" min="0" step="0.1" inputmode="decimal">
           </div>
           <button class="ghost" id="toggleManual" type="button">Enter miles yourself</button>
@@ -176,22 +163,15 @@
           <div id="map" aria-label="Map of warehouse and delivery address"></div>
         </section>
         <section class="card" id="quoteCard">
-          <div class="hint" style="margin-top:0">Estimated invoice to FreshPoint</div>
+          <div class="hint" style="margin-top:0">Estimated cost</div>
           <div class="quote-amt" id="total">— <small>USD</small></div>
           <div class="rows" id="breakdown"></div>
-          <div id="flags"></div>
         </section>
       </div>
     </main>
-    <footer>
-      <p><strong>Estimate only.</strong> Instacart bills FreshPoint on a monthly invoice using one-way driving miles. The customer is not charged this amount at checkout. Actual billed miles may differ slightly from this map.</p>
-      <p id="formulaNote">Formula in production invoicing: base fee + max(miles − 5, 0) × per-mile rate. First 5 miles are inside the base. SaaS / platform fees are not included.</p>
-      <p>Coverage (is this customer inside the 70-minute peak window?) is a separate map. If drive time here is over 70 minutes, treat that as a warning — not a live availability check.</p>
-      <p>Unlisted internal tool. Not official Instacart commercial terms. Do not publish, SEO, or treat as a rate sheet.</p>
-    </footer>
   </div>
 
-  <script src="payload.js?v=20260831b"></script>
+  <script src="payload.js?v=20260831c"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script>
     const SESSION_KEY = "fpQuoteConfigV1";
@@ -231,7 +211,6 @@
     let CONFIG = null;
     let dest = null;
     let lastMiles = null;
-    let lastMinutes = null;
     let lastSource = "";
     let map, whMarker, destMarker, line, debounce;
 
@@ -248,14 +227,13 @@
     function money(n) {
       return n.toLocaleString("en-US", { style: "currency", currency: "USD" });
     }
-    function haversineMiles(a, b) {
-      const R = 3958.8;
-      const dLat = (b.lat - a.lat) * Math.PI / 180;
-      const dLng = (b.lng - a.lng) * Math.PI / 180;
-      const s =
-        Math.sin(dLat / 2) ** 2 +
-        Math.cos(a.lat * Math.PI / 180) * Math.cos(b.lat * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
-      return 2 * R * Math.asin(Math.sqrt(s));
+    // Equirectangular (local cartesian) miles — as the crow flies.
+    function fliesMiles(a, b) {
+      const milesPerDeg = 69.172;
+      const latMid = ((a.lat + b.lat) / 2) * Math.PI / 180;
+      const dx = (b.lng - a.lng) * Math.cos(latMid) * milesPerDeg;
+      const dy = (b.lat - a.lat) * milesPerDeg;
+      return Math.sqrt(dx * dx + dy * dy);
     }
     function quote(miles, w) {
       const r = rates(tierFor(w));
@@ -265,7 +243,6 @@
     }
     function renderQuote() {
       const w = warehouse();
-      $("flags").innerHTML = "";
       if (lastMiles == null || Number.isNaN(lastMiles)) {
         $("total").innerHTML = "— <small>USD</small>";
         $("breakdown").innerHTML = "";
@@ -273,33 +250,23 @@
       }
       const q = quote(lastMiles, w);
       $("total").innerHTML = `${money(q.total)} <small>USD</small>`;
+      const milesLabel = lastSource === "manual" ? "Miles" : "Straight-line miles";
       $("breakdown").innerHTML = `
         <div class="row"><span>Warehouse</span><span>${w.name}</span></div>
-        <div class="row"><span>Rate card</span><span>${q.label}</span></div>
-        <div class="row"><span>Driving miles (one-way)</span><span>${lastMiles.toFixed(1)} mi${lastSource ? " · " + lastSource : ""}</span></div>
-        <div class="row"><span>Drive time</span><span>${lastMinutes == null ? "—" : Math.round(lastMinutes) + " min"}</span></div>
-        <div class="row"><span>Base fee (includes first 5 mi)</span><span>${money(q.base)}</span></div>
-        <div class="row"><span>Mileage · ${q.extraMiles.toFixed(1)} mi × ${money(q.per)}</span><span>${money(q.extra)}</span></div>
-        <div class="row"><span>Estimated invoice</span><span>${money(q.total)}</span></div>
+        <div class="row"><span>${milesLabel}</span><span>${lastMiles.toFixed(1)} mi</span></div>
+        <div class="row"><span>Base</span><span>${money(q.base)}</span></div>
+        <div class="row"><span>Additional mileage</span><span>${money(q.extra)}</span></div>
+        <div class="row"><span>Estimated cost</span><span>${money(q.total)}</span></div>
       `;
-      if (w.status !== "live") {
-        $("flags").innerHTML += `<div class="banner muted">${STATUS_LABEL[w.status]} site — rate card still applies; confirm the DC is live for ordering before quoting a customer.</div>`;
-      }
-      if (lastMinutes != null && lastMinutes > 70) {
-        $("flags").innerHTML += `<div class="banner warn">Drive time is over 70 minutes. This customer is likely outside the peak coverage window. Confirm on the FreshPoint isochrone map before promising same-window delivery.</div>`;
-      } else if (lastMinutes != null) {
-        $("flags").innerHTML += `<div class="banner ok">Drive time is inside 70 minutes on this routing. Coverage maps (Carto) remain the source of truth for serviceable area.</div>`;
-      }
     }
     function updateWhMeta() {
       const w = warehouse();
-      const r = rates(tierFor(w));
-      $("whMeta").innerHTML = `${w.address} · <span class="pill ${w.status}">${STATUS_LABEL[w.status]}</span> · ${r.label}: ${money(r.base)} + ${money(r.per)}/mi after 5`;
+      $("whMeta").innerHTML = `${w.address} · <span class="pill ${w.status}">${STATUS_LABEL[w.status]}</span>`;
       if (map && whMarker) {
         whMarker.setLatLng([w.lat, w.lng]);
         map.setView([w.lat, w.lng], dest ? map.getZoom() : 10);
       }
-      if (dest) route();
+      if (dest) measure();
       else renderQuote();
     }
     function initMap() {
@@ -318,27 +285,12 @@
       line = L.polyline([[w.lat, w.lng], [lat, lng]], { color: "#0aad0a", weight: 3 }).addTo(map);
       map.fitBounds(line.getBounds().pad(0.2));
     }
-    async function route() {
+    function measure() {
       const w = warehouse();
       if (!dest) return;
-      $("status").textContent = "Routing…";
-      try {
-        const url = `https://router.project-osrm.org/route/v1/driving/${w.lng},${w.lat};${dest.lng},${dest.lat}?overview=false`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error("osrm");
-        const data = await res.json();
-        const route0 = data.routes && data.routes[0];
-        if (!route0) throw new Error("no-route");
-        lastMiles = route0.distance / 1609.344;
-        lastMinutes = route0.duration / 60;
-        lastSource = "driving";
-        $("status").textContent = "";
-      } catch (err) {
-        lastMiles = haversineMiles(w, dest) * 1.3;
-        lastMinutes = null;
-        lastSource = "straight-line × 1.3 (routing unavailable)";
-        $("status").textContent = "Driving router unavailable — using an estimated miles fallback.";
-      }
+      lastMiles = fliesMiles(w, dest);
+      lastSource = "flies";
+      $("status").textContent = "";
       drawDest(dest.lat, dest.lng);
       renderQuote();
     }
@@ -362,7 +314,7 @@
           dest = { lat: parseFloat(row.lat), lng: parseFloat(row.lon) };
           $("suggest").style.display = "none";
           $("milesManualWrap").hidden = true;
-          route();
+          measure();
         });
         $("suggest").appendChild(btn);
       });
@@ -371,10 +323,7 @@
 
     function boot(config) {
       CONFIG = config;
-      const t1 = rates(1);
-      const t2 = rates(2);
-      $("lede").textContent = "Pick the FreshPoint warehouse and a customer address. This shows what Instacart would invoice FreshPoint for last-mile delivery — not a checkout fee, and not a contract.";
-      $("formulaNote").textContent = `Formula in production invoicing: base fee + max(miles − 5, 0) × per-mile rate. First 5 miles are inside the base. California warehouses use the higher-cost tier (${money(t1.base)} + ${money(t1.per)}/mi). All other U.S. warehouses on this list use ${money(t2.base)} + ${money(t2.per)}/mi. SaaS / platform fees are not included.`;
+      $("lede").textContent = "Select a warehouse and enter the customer address.";
       const whEl = $("wh");
       whEl.innerHTML = "";
       warehouses().forEach((w) => {
@@ -388,7 +337,7 @@
       $("addr").addEventListener("input", () => {
         clearTimeout(debounce);
         debounce = setTimeout(() => searchAddr($("addr").value).catch(() => {
-          $("status").textContent = "Address lookup failed. Enter miles yourself.";
+          $("status").textContent = "Could not find that address. Enter miles yourself.";
         }), 450);
       });
       document.addEventListener("click", (e) => {
@@ -402,7 +351,6 @@
         const n = parseFloat($("milesManual").value);
         if (Number.isNaN(n) || n < 0) return;
         lastMiles = n;
-        lastMinutes = null;
         lastSource = "manual";
         dest = null;
         renderQuote();
