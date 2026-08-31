@@ -6,6 +6,8 @@
   <meta name="robots" content="noindex, nofollow, noarchive">
   <meta name="googlebot" content="noindex, nofollow">
   <title>FreshPoint × Instacart · delivery cost estimator</title>
+  <link rel="icon" type="image/png" href="assets/freshpoint-icon.png">
+  <link rel="apple-touch-icon" href="assets/freshpoint-icon.png">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
   <style>
     :root {
@@ -27,24 +29,40 @@
       line-height: 1.45;
     }
     header {
-      background: linear-gradient(160deg, var(--fp-deep) 0%, var(--fp) 70%);
-      color: #f6f3ec;
-      padding: 1.35rem 1.25rem 1.5rem;
+      background: #fff;
+      color: var(--ink);
+      padding: 1.15rem 1.25rem 1.35rem;
+      border-bottom: 1px solid var(--line);
     }
     .wrap { max-width: 980px; margin: 0 auto; }
-    .lockup {
-      display: flex; align-items: baseline; gap: .55rem; flex-wrap: wrap;
-      font-size: .78rem; letter-spacing: .12em; text-transform: uppercase;
-      opacity: .85;
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
     }
-    .lockup b { color: var(--ic); font-weight: 700; }
+    .fp-logo {
+      display: block;
+      height: 48px;
+      width: auto;
+    }
+    .partner {
+      font-size: .72rem;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      border-left: 1px solid var(--line);
+      padding-left: 1rem;
+      line-height: 1.2;
+    }
     h1 {
-      margin: .45rem 0 0;
+      margin: .7rem 0 0;
       font-size: clamp(1.45rem, 3.4vw, 2.05rem);
       font-weight: 650;
       letter-spacing: -.02em;
+      color: var(--fp-deep);
     }
-    .lede { margin: .45rem 0 0; max-width: 42rem; color: #d7e4dc; font-size: .95rem; }
+    .lede { margin: .45rem 0 0; max-width: 42rem; color: var(--muted); font-size: .95rem; }
     main { padding: 1.15rem 1.25rem 2.5rem; }
     .grid {
       display: grid;
@@ -121,7 +139,10 @@
 <body>
   <header>
     <div class="wrap">
-      <div class="lockup">FreshPoint <b>×</b> Instacart Will Call</div>
+      <div class="brand">
+        <img class="fp-logo" src="assets/freshpoint-logo.png?v=20260831e" width="738" height="210" alt="FreshPoint">
+        <span class="partner">Instacart Will Call</span>
+      </div>
       <h1>Delivery cost estimator</h1>
       <p class="lede" id="lede">Enter the password from your Instacart contact to continue.</p>
     </div>
@@ -171,7 +192,7 @@
     </main>
   </div>
 
-  <script src="payload.js?v=20260831d"></script>
+  <script src="payload.js?v=20260831e"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script>
     const SESSION_KEY = "fpQuoteConfigV1";
