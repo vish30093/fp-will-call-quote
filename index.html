@@ -171,7 +171,7 @@
     </main>
   </div>
 
-  <script src="payload.js?v=20260831c"></script>
+  <script src="payload.js?v=20260831d"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script>
     const SESSION_KEY = "fpQuoteConfigV1";
@@ -227,14 +227,6 @@
     function money(n) {
       return n.toLocaleString("en-US", { style: "currency", currency: "USD" });
     }
-    // Equirectangular (local cartesian) miles — as the crow flies.
-    function fliesMiles(a, b) {
-      const milesPerDeg = 69.172;
-      const latMid = ((a.lat + b.lat) / 2) * Math.PI / 180;
-      const dx = (b.lng - a.lng) * Math.cos(latMid) * milesPerDeg;
-      const dy = (b.lat - a.lat) * milesPerDeg;
-      return Math.sqrt(dx * dx + dy * dy);
-    }
     function quote(miles, w) {
       const r = rates(tierFor(w));
       const extraMiles = Math.max(0, miles - 5);
@@ -250,7 +242,7 @@
       }
       const q = quote(lastMiles, w);
       $("total").innerHTML = `${money(q.total)} <small>USD</small>`;
-      const milesLabel = lastSource === "manual" ? "Miles" : "Straight-line miles";
+      const milesLabel = lastSource === "manual" ? "Miles" : "Driving miles";
       $("breakdown").innerHTML = `
         <div class="row"><span>Warehouse</span><span>${w.name}</span></div>
         <div class="row"><span>${milesLabel}</span><span>${lastMiles.toFixed(1)} mi</span></div>
@@ -277,22 +269,37 @@
       }).addTo(map);
       whMarker = L.marker([w.lat, w.lng]).addTo(map).bindPopup("Warehouse");
     }
-    function drawDest(lat, lng) {
-      if (destMarker) destMarker.setLatLng([lat, lng]);
-      else destMarker = L.marker([lat, lng]).addTo(map).bindPopup("Customer");
-      const w = warehouse();
+    function drawDest(latlngs) {
+      if (destMarker) destMarker.setLatLng([dest.lat, dest.lng]);
+      else destMarker = L.marker([dest.lat, dest.lng]).addTo(map).bindPopup("Customer");
       if (line) map.removeLayer(line);
-      line = L.polyline([[w.lat, w.lng], [lat, lng]], { color: "#0aad0a", weight: 3 }).addTo(map);
+      line = L.polyline(latlngs, { color: "#0aad0a", weight: 3 }).addTo(map);
       map.fitBounds(line.getBounds().pad(0.2));
     }
-    function measure() {
+    async function measure() {
       const w = warehouse();
       if (!dest) return;
-      lastMiles = fliesMiles(w, dest);
-      lastSource = "flies";
-      $("status").textContent = "";
-      drawDest(dest.lat, dest.lng);
-      renderQuote();
+      $("status").textContent = "Getting driving distance…";
+      try {
+        const url = `https://router.project-osrm.org/route/v1/driving/${w.lng},${w.lat};${dest.lng},${dest.lat}?overview=simplified&geometries=geojson`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("osrm");
+        const data = await res.json();
+        const route0 = data.routes && data.routes[0];
+        if (!route0) throw new Error("no-route");
+        lastMiles = route0.distance / 1609.344;
+        lastSource = "driving";
+        $("status").textContent = "";
+        const latlngs = route0.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+        drawDest(latlngs);
+        renderQuote();
+      } catch (err) {
+        lastMiles = null;
+        $("status").textContent = "Couldn’t get driving distance. Enter miles yourself.";
+        $("milesManualWrap").hidden = false;
+        drawDest([[w.lat, w.lng], [dest.lat, dest.lng]]);
+        renderQuote();
+      }
     }
     async function searchAddr(q) {
       if (q.trim().length < 5) { $("suggest").style.display = "none"; return; }
